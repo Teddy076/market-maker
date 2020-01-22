@@ -1,5 +1,10 @@
+import hashlib
+import hmac
+import json
+import time
+import urllib
+
 from websocket import create_connection
-import json, base64, hashlib, urlparse, hmac, time
 
 ###
 # websocket-apikey-auth-test.py
@@ -30,9 +35,9 @@ def main():
 def test_with_message():
     # This is up to you, most use microtime but you may have your own scheme so long as it's increasing
     # and doesn't repeat.
-    nonce = int(round(time.time() * 1000))
+    expires = int(time.time()) + 5
     # See signature generation reference at https://www.bitmex.com/app/apiKeys
-    signature = bitmex_signature(API_SECRET, VERB, ENDPOINT, nonce)
+    signature = bitmex_signature(API_SECRET, VERB, ENDPOINT, expires)
 
     # Initial connection - BitMEX sends a welcome message.
     ws = create_connection(BITMEX_URL + ENDPOINT)
@@ -41,7 +46,7 @@ def test_with_message():
     print("Received '%s'" % result)
 
     # Send API Key with signed message.
-    request = {"op": "authKey", "args": [API_KEY, nonce, signature]}
+    request = {"op": "authKeyExpires", "args": [API_KEY, expires, signature]}
     ws.send(json.dumps(request))
     print("Sent Auth request")
     result = ws.recv()
@@ -62,13 +67,13 @@ def test_with_message():
 def test_with_querystring():
     # This is up to you, most use microtime but you may have your own scheme so long as it's increasing
     # and doesn't repeat.
-    nonce = int(round(time.time() * 1000))
+    expires = int(time.time()) + 5
     # See signature generation reference at https://www.bitmex.com/app/apiKeys
-    signature = bitmex_signature(API_SECRET, VERB, ENDPOINT, nonce)
+    signature = bitmex_signature(API_SECRET, VERB, ENDPOINT, expires)
 
     # Initial connection - BitMEX sends a welcome message.
     ws = create_connection(BITMEX_URL + ENDPOINT +
-                           "?api-nonce=%s&api-signature=%s&api-key=%s" % (nonce, signature, API_KEY))
+                           "?api-expires=%s&api-signature=%s&api-key=%s" % (expires, signature, API_KEY))
     print("Receiving Welcome Message...")
     result = ws.recv()
     print("Received '%s'" % result)
@@ -96,14 +101,16 @@ def bitmex_signature(apiSecret, verb, url, nonce, postdict=None):
         # separators remove spaces from json
         # BitMEX expects signatures from JSON built without spaces
         data = json.dumps(postdict, separators=(',', ':'))
-    parsedURL = urlparse.urlparse(url)
+    parsedURL = urllib.parse.urlparse(url)
     path = parsedURL.path
     if parsedURL.query:
         path = path + '?' + parsedURL.query
     # print("Computing HMAC: %s" % verb + path + str(nonce) + data)
-    message = bytes(verb + path + str(nonce) + data).encode('utf-8')
+    message = (verb + path + str(nonce) + data).encode('utf-8')
+    print("Signing: %s" % str(message))
 
-    signature = hmac.new(apiSecret, message, digestmod=hashlib.sha256).hexdigest()
+    signature = hmac.new(apiSecret.encode('utf-8'), message, digestmod=hashlib.sha256).hexdigest()
+    print("Signature: %s" % signature)
     return signature
 
 if __name__ == "__main__":
