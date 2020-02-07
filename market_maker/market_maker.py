@@ -11,7 +11,6 @@ import signal
 from market_maker import bitmex
 from market_maker.settings import settings
 from market_maker.utils import log, constants, errors, math
-from indexprice.indexprice import IndexPrice
 
 # Used for reloading the bot - saves modified times of key files
 import os
@@ -272,7 +271,7 @@ class OrderManager:
             self.start_position_sell *= (1.00 + (settings.MIN_SPREAD / 2))
 
         # Midpoint, used for simpler order placement.
-        self.start_position_mid = IndexPrice().LastPrice()
+        self.start_position_mid = ticker["mid"]
         logger.info(
             "%s Ticker: Buy: %.*f, Sell: %.*f" %
             (self.instrument['symbol'], tickLog, ticker["buy"], tickLog, ticker["sell"])

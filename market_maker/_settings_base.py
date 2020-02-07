@@ -117,3 +117,10 @@ WATCHED_FILES = [join('market_maker', 'market_maker.py'), join('market_maker', '
 
 # Specify the contracts that you hold. These will be used in portfolio calculations.
 CONTRACTS = ['XBTUSD']
+
+########################################################################################################################
+# Teddy Settings
+########################################################################################################################
+
+OFFSET_MAX = 30
+OFFSET_STEP_SIZE = 0.2
