@@ -31,8 +31,8 @@ class CustomOrderManager(OrderManager):
         # Calcul de l'offset à appliquer
         # On accorde plus d'importance aux données récentes selon certains settings
         for i in range(0, len(offset)):
-            offset_cumul += (offset[i] * i)
-            offset_coef += i
+            offset_cumul += (offset[i] * (i + 1))
+            offset_coef += (i + 1)
 
         # Calcul offset final
         # On obtient un pourcentage brut à appliquer à notre indexprice
