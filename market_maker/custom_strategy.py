@@ -20,10 +20,11 @@ class CustomOrderManager(OrderManager):
         # IndexPrice
         indexprice = IndexPrice().LastPrice()
 
-        # BitMEX data
+        # BitMEX Data
         ticker = self.exchange.get_ticker()
+        current_position = self.exchange.get_delta()
 
-        # Offset
+        # Offset List
         offset.append(((ticker["mid"] - indexprice) / indexprice))
         if len(offset) > settings.OFFSET_MAX:
             del offset[0]
@@ -42,15 +43,19 @@ class CustomOrderManager(OrderManager):
         logger.debug('Taille Offset : ' + str(len(offset)))
         logger.debug(str(offset))
         logger.info('Offset calculé : ' + str(round(offset_calcul * 100,4)))
-        logger.info('IndexPrice avec offset : ' + str(indexoffset))
+        logger.info('IndexPrice avec offset : ' + str(round(indexoffset, 4)))f
 
+        # Boucle d'ajout des ordres
         for i in range (0, settings.ORDER_PAIRS):
-            buyprice1 = math.toNearest(indexoffset * (1 - (settings.INTERVAL * (i + 1) / 2)), self.instrument['tickSize'])
-            buy_orders.append({'price': float(buyprice1), 'orderQty': (settings.ORDER_START_SIZE + (settings.ORDER_STEP_SIZE * i)), 'side': "Buy"})
+            if current_position < settings.MAX_POSITION:
+                buyprice1 = math.toNearest(indexoffset * (1 - (settings.INTERVAL * (i + 1) / 2)), self.instrument['tickSize'])
+                buy_orders.append({'price': float(buyprice1), 'orderQty': (settings.ORDER_START_SIZE + (settings.ORDER_STEP_SIZE * i)), 'side': "Buy"})
 
-            sellprice1 = math.toNearest(indexoffset * (1 + (settings.INTERVAL * (i + 1) / 2)), self.instrument['tickSize'])
-            sell_orders.append({'price': float(sellprice1), 'orderQty': (settings.ORDER_START_SIZE + (settings.ORDER_STEP_SIZE * i)), 'side': "Sell"})
+            if current_position > settings.MIN_POSITION:
+                sellprice1 = math.toNearest(indexoffset * (1 + (settings.INTERVAL * (i + 1) / 2)), self.instrument['tickSize'])
+                sell_orders.append({'price': float(sellprice1), 'orderQty': (settings.ORDER_START_SIZE + (settings.ORDER_STEP_SIZE * i)), 'side': "Sell"})
 
+        # Exemples de base
         # populate buy and sell orders, e.g.
         #buy_orders.append({'price': float(buyprice1), 'orderQty': 100, 'side': "Buy"})
         #sell_orders.append({'price': float(sellprice1), 'orderQty': 100, 'side': "Sell"})
