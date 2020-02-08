@@ -43,7 +43,7 @@ class CustomOrderManager(OrderManager):
         logger.debug('Taille Offset : ' + str(len(offset)))
         logger.debug(str(offset))
         logger.info('Offset calculé : ' + str(round(offset_calcul * 100,4)))
-        logger.info('IndexPrice avec offset : ' + str(round(indexoffset, 4)))f
+        logger.info('IndexPrice avec offset : ' + str(round(indexoffset, 4)))
 
         # Boucle d'ajout des ordres
         for i in range (0, settings.ORDER_PAIRS):
