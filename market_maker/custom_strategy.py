@@ -5,8 +5,9 @@ from market_maker.market_maker import OrderManager
 from indexprice.indexprice import IndexPrice
 
 logger = log.setup_custom_logger('custom')
-offset = []
 
+offset = []
+indexprice_list = []
 
 class CustomOrderManager(OrderManager):
     """A sample order manager for implementing your own custom strategy"""
@@ -16,9 +17,16 @@ class CustomOrderManager(OrderManager):
         sell_orders = []
         offset_cumul = 0
         offset_coef = 0
+        predict_delta = 0
+        predict_last = 0
 
         # IndexPrice
         indexprice = IndexPrice().LastPrice()
+
+        # Prediction : Liste des IndexPrice
+        indexprice_list.append(indexprice)
+        if len(indexprice_list) > settings.PREDICT_SIZE:
+            del indexprice_list[0]
 
         # BitMEX Data
         ticker = self.exchange.get_ticker()
@@ -40,10 +48,23 @@ class CustomOrderManager(OrderManager):
         offset_calcul = (offset_cumul / offset_coef)
         indexoffset = indexprice * (1 + offset_calcul)
 
+        # Prediction
+        for i in range(0, len(indexprice_list)):
+            if predict_last > 0:
+                predict_delta += (indexprice_list[i] - predict_last)
+            predict_last = indexprice_list[i]
+        logger.info(indexprice_list)
+
         logger.debug('Taille Offset : ' + str(len(offset)))
         logger.debug(str(offset))
         logger.info('Offset calculé : ' + str(round(offset_calcul * 100,4)))
         logger.info('IndexPrice avec offset : ' + str(round(indexoffset, 4)))
+        logger.info('Prediction : ' + str(round(predict_delta, 4)))
+
+        # Application de la Prediction à indexoffset
+        indexoffset += predict_delta
+
+        logger.info('IndexPrice avec predict : ' + str(round(indexoffset, 4)))
 
         # Boucle d'ajout des ordres
         for i in range (0, settings.ORDER_PAIRS):
