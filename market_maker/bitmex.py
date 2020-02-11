@@ -255,7 +255,7 @@ class BitMEX(object):
         # Make the request
         response = None
         try:
-            self.logger.info("sending req to %s: %s" % (url, json.dumps(postdict or query or '')))
+            self.logger.debug("sending req to %s: %s" % (url, json.dumps(postdict or query or '')))
             req = requests.Request(verb, url, json=postdict, auth=auth, params=query)
             prepped = self.session.prepare_request(req)
             response = self.session.send(prepped, timeout=timeout)
