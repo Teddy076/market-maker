@@ -13,7 +13,6 @@ indexprice_list = []
 # ########################### TO-DO-LIST ###########################
 # ##################################################################
 # 1 - Maintain spread gestion paramètre
-# 2 - Modif de la prediction trop agressive : passer sur une moyenne au lieu d'un cumul
 
 
 
@@ -79,15 +78,21 @@ class CustomOrderManager(OrderManager):
 
         # Boucle d'ajout des ordres
         for i in range (0, settings.ORDER_PAIRS):
+            # RAZ Variables
+            buyprice = 0
+            sellprice = 0
+
             # BUY
             if current_position < settings.MAX_POSITION:
-                buyprice1 = math.toNearest(indexoffset * (1 - (settings.INTERVAL * (i + 1) / 2)), self.instrument['tickSize'])
-                buy_orders.append({'price': float(buyprice1), 'orderQty': (settings.ORDER_START_SIZE + (settings.ORDER_STEP_SIZE * i)), 'side': "Buy"})
+                buyprice = math.toNearest(indexoffset * (1 - (settings.INTERVAL * (i + 1) / 2)), self.instrument['tickSize'])
+                if buyprice > ticker['buy'] and settings.MAINTAIN_SPREADS == True: buyprice = ticker['buy']
+                buy_orders.append({'price': float(buyprice), 'orderQty': (settings.ORDER_START_SIZE + (settings.ORDER_STEP_SIZE * i)), 'side': "Buy"})
 
             # SELL
             if current_position > settings.MIN_POSITION:
-                sellprice1 = math.toNearest(indexoffset * (1 + (settings.INTERVAL * (i + 1) / 2)), self.instrument['tickSize'])
-                sell_orders.append({'price': float(sellprice1), 'orderQty': (settings.ORDER_START_SIZE + (settings.ORDER_STEP_SIZE * i)), 'side': "Sell"})
+                sellprice = math.toNearest(indexoffset * (1 + (settings.INTERVAL * (i + 1) / 2)), self.instrument['tickSize'])
+                if sellprice < ticker['sell'] and settings.MAINTAIN_SPREADS == True: sellprice = ticker['sell']
+                sell_orders.append({'price': float(sellprice), 'orderQty': (settings.ORDER_START_SIZE + (settings.ORDER_STEP_SIZE * i)), 'side': "Sell"})
 
         # Exemples de base
         # populate buy and sell orders, e.g.
