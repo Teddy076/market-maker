@@ -9,6 +9,15 @@ logger = log.setup_custom_logger('custom')
 offset = []
 indexprice_list = []
 
+# ##################################################################
+# ########################### TO-DO-LIST ###########################
+# ##################################################################
+# 1 - Maintain spread gestion paramètre
+# 2 - Modif de la prediction trop agressive : passer sur une moyenne au lieu d'un cumul
+
+
+
+
 class CustomOrderManager(OrderManager):
     """A sample order manager for implementing your own custom strategy"""
 
@@ -18,6 +27,7 @@ class CustomOrderManager(OrderManager):
         offset_cumul = 0
         offset_coef = 0
         predict_delta = 0
+        predict_cumul = 0
         predict_last = 0
 
         # IndexPrice
@@ -51,8 +61,9 @@ class CustomOrderManager(OrderManager):
         # Prediction
         for i in range(0, len(indexprice_list)):
             if predict_last > 0:
-                predict_delta += (indexprice_list[i] - predict_last)
+                predict_cumul += (indexprice_list[i] - predict_last)
             predict_last = indexprice_list[i]
+        predict_delta = (predict_cumul / settings.PREDICT_SIZE)
         logger.info(indexprice_list)
 
         logger.debug('Taille Offset : ' + str(len(offset)))
@@ -68,10 +79,12 @@ class CustomOrderManager(OrderManager):
 
         # Boucle d'ajout des ordres
         for i in range (0, settings.ORDER_PAIRS):
+            # BUY
             if current_position < settings.MAX_POSITION:
                 buyprice1 = math.toNearest(indexoffset * (1 - (settings.INTERVAL * (i + 1) / 2)), self.instrument['tickSize'])
                 buy_orders.append({'price': float(buyprice1), 'orderQty': (settings.ORDER_START_SIZE + (settings.ORDER_STEP_SIZE * i)), 'side': "Buy"})
 
+            # SELL
             if current_position > settings.MIN_POSITION:
                 sellprice1 = math.toNearest(indexoffset * (1 + (settings.INTERVAL * (i + 1) / 2)), self.instrument['tickSize'])
                 sell_orders.append({'price': float(sellprice1), 'orderQty': (settings.ORDER_START_SIZE + (settings.ORDER_STEP_SIZE * i)), 'side': "Sell"})
