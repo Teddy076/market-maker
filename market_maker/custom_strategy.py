@@ -62,9 +62,20 @@ class CustomOrderManager(OrderManager):
             if predict_last > 0:
                 predict_cumul += (indexprice_list[i] - predict_last)
             predict_last = indexprice_list[i]
-        predict_delta = (predict_cumul / settings.PREDICT_SIZE)
-        logger.info(indexprice_list)
 
+        # Prediction Mode
+        if settings.PREDICT_MODE == 1:
+            # Cumul
+            predict_delta = predict_cumul
+        elif settings.PREDICT_MODE == 2:
+            # Moyenne
+            predict_delta = (predict_cumul / settings.PREDICT_SIZE)
+        else:
+            # Inconnu : On utilise le mode par défault et indique un warning
+            logger.warning('Please check settings : PREDICT_MODE is wrong')
+            predict_delta = predict_cumul
+
+        # Log some data
         logger.debug('Taille Offset : ' + str(len(offset)))
         logger.debug(str(offset))
         logger.info('Offset calculé : ' + str(round(offset_calcul * 100,4)))
