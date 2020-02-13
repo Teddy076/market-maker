@@ -1,3 +1,4 @@
+# encoding=utf-8
 import sys
 from market_maker.utils import math, log
 from market_maker.settings import settings
@@ -30,7 +31,7 @@ class CustomOrderManager(OrderManager):
         predict_last = 0
 
         # IndexPrice
-        indexprice = IndexPrice().LastPrice()
+        indexprice = IndexPrice().LastPrice(settings.SYMBOL)
 
         # Prediction : Liste des IndexPrice
         indexprice_list.append(indexprice)
