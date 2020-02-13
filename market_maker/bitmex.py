@@ -259,6 +259,7 @@ class BitMEX(object):
             req = requests.Request(verb, url, json=postdict, auth=auth, params=query)
             prepped = self.session.prepare_request(req)
             response = self.session.send(prepped, timeout=timeout)
+            self.logger.info('X-RateLimit-Remaining : ' + response.headers['X-RateLimit-Remaining'])
             # Make non-200s throw
             response.raise_for_status()
 
