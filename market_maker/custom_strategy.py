@@ -79,14 +79,14 @@ class CustomOrderManager(OrderManager):
         # Log some data
         logger.debug('Taille Offset : ' + str(len(offset)))
         logger.debug(str(offset))
-        logger.info('Offset calculé : ' + str(round(offset_calcul * 100,4)))
-        logger.info('IndexPrice avec offset : ' + str(round(indexoffset, 4)))
-        logger.info('Prediction : ' + str(round(predict_delta, 4)))
+        logger.info('Offset calculé : ' + str(round(offset_calcul * 100, settings.ROUND_PRECISION)))
+        logger.info('IndexPrice avec offset : ' + str(round(indexoffset, settings.ROUND_PRECISION)))
+        logger.info('Prediction : ' + str(round(predict_delta, settings.ROUND_PRECISION)))
 
         # Application de la Prediction à indexoffset
         indexoffset += predict_delta
 
-        logger.info('IndexPrice avec predict : ' + str(round(indexoffset, 4)))
+        logger.info('IndexPrice avec predict : ' + str(round(indexoffset, settings.ROUND_PRECISION)))
 
         # Boucle d'ajout des ordres
         for i in range (0, settings.ORDER_PAIRS):
