@@ -31,6 +31,7 @@ class CustomOrderManager(OrderManager):
         predict_delta = 0
         predict_cumul = 0
         predict_last = 0
+        tickSize = 0
 
         # IndexPrice
         indexprice = IndexPrice().LastPrice(settings.SYMBOL)
@@ -90,6 +91,12 @@ class CustomOrderManager(OrderManager):
 
         logger.info('IndexPrice avec predict : ' + str(round(indexoffset, settings.ROUND_PRECISION)))
 
+        # Customisation du TickSize
+        if settings.TICKSIZE_CUSTOM != 0:
+            ticksize = settings.TICKSIZE_CUSTOM
+        else:
+            ticksize = self.instrument['tickSize']
+
         # Boucle d'ajout des ordres
         for i in range (0, settings.ORDER_PAIRS):
             # RAZ Variables
@@ -99,14 +106,14 @@ class CustomOrderManager(OrderManager):
             # BUY
             if current_position < settings.MAX_POSITION:
                 # Price Calculation
-                buyprice = math.toNearest(indexoffset * (1 - (settings.INTERVAL * (i + 1) / 2)), self.instrument['tickSize'])
+                buyprice = math.toNearest(indexoffset * (1 - (settings.INTERVAL * (i + 1) / 2)), ticksize)
 
                 # MAINTAIN_SPREADS
                 if buyprice > ticker['buy'] and settings.MAINTAIN_SPREADS == True: buyprice = ticker['buy']
 
                 # Palier
                 if buyprice_last > 0 and buyprice == buyprice_last:
-                    buyprice = math.toNearest(buyprice_last * (1 - (settings.INTERVAL * (i + 1) / 2)), self.instrument['tickSize'])
+                    buyprice = math.toNearest(buyprice_last * (1 - (settings.INTERVAL * (i + 1) / 2)), ticksize)
                 buyprice_last = buyprice
 
                 buy_orders.append({'price': float(buyprice), 'orderQty': (settings.ORDER_START_SIZE + (settings.ORDER_STEP_SIZE * i)), 'side': "Buy"})
@@ -114,14 +121,14 @@ class CustomOrderManager(OrderManager):
             # SELL
             if current_position > settings.MIN_POSITION:
                 # Price Calculation
-                sellprice = math.toNearest(indexoffset * (1 + (settings.INTERVAL * (i + 1) / 2)), self.instrument['tickSize'])
+                sellprice = math.toNearest(indexoffset * (1 + (settings.INTERVAL * (i + 1) / 2)), ticksize)
 
                 # MAINTAIN_SPREADS
                 if sellprice < ticker['sell'] and settings.MAINTAIN_SPREADS == True: sellprice = ticker['sell']
 
                 # Palier
                 if sellprice_last > 0 and sellprice == sellprice_last:
-                    sellprice = math.toNearest(sellprice_last * (1 + (settings.INTERVAL * (i + 1) / 2)), self.instrument['tickSize'])
+                    sellprice = math.toNearest(sellprice_last * (1 + (settings.INTERVAL * (i + 1) / 2)), ticksize)
                 sellprice_last = sellprice
 
                 sell_orders.append({'price': float(sellprice), 'orderQty': (settings.ORDER_START_SIZE + (settings.ORDER_STEP_SIZE * i)), 'side': "Sell"})
