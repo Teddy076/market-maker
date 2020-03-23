@@ -310,14 +310,14 @@ class BitMEX(object):
             elif response.status_code == 502:
                 self.logger.warning("Unable to contact the BitMEX API (502 - Bad Gateway), retrying. " +
                                     "Request: %s \n %s" % (url, json.dumps(postdict)))
-                time.sleep(3)
+                time.sleep(1)
                 return retry()
 
             # 503 - BitMEX temporary downtime, likely due to a deploy. Try again
             elif response.status_code == 503:
                 self.logger.warning("Unable to contact the BitMEX API (503), retrying. " +
                                     "Request: %s \n %s" % (url, json.dumps(postdict)))
-                time.sleep(3)
+                time.sleep(1)
                 return retry()
 
             elif response.status_code == 400:
