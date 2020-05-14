@@ -185,7 +185,7 @@ class SpotMM:
                                         #list_buy.append([orders['BUY_' + str(i)]["price"], res_del_buy["executedQty"]])
                                         logger.info('*** EXECUTION BUY Cancel *** : ' + res_del_buy["executedQty"])
                                 except:
-                                    logger.info('EXCEPTION lors du cancel BUY_'+str(i))
+                                    logger.info('EXCEPTION lors du Cancel BUY_'+str(i))
 
                             # Ajout du nouvel ordre
                             res_buy = client.order_limit_buy(
@@ -208,6 +208,26 @@ class SpotMM:
                     if float(res_buy["executedQty"]) != 0:
                         # Filled
                         logger.info('*** EXECUTION BUY Order TAKER *** : ' + str(res_buy["executedQty"]))
+            else:
+                # MAX_POSITION Atteint, on check si on a un ordre en cours, si oui on le supprime
+                if 'BUY_' + str(i) in orders:
+                    try:
+                        res_del_buy = client.cancel_order(
+                            symbol=settings.SYMBOL,
+                            orderId=orders['BUY_' + str(i)]["orderId"])
+
+                        # On récupère le montant éxecuté
+                        # On le fait exclusivement ici afin de ne pas double comptabiliser des partial-filled
+                        if float(res_del_buy["executedQty"]) > 0:
+                            self.current_position += float(res_del_buy["executedQty"])
+                            self.total_volume += float(res_del_buy["executedQty"])
+                            list_buy_qty.append(float(res_del_buy["executedQty"]))
+                            list_buy_amount.append(float(res_del_buy["executedQty"]) * orders['BUY_' + str(i)]["price"])
+                            #list_buy.append([orders['BUY_' + str(i)]["price"], res_del_buy["executedQty"]])
+                            logger.info('*** EXECUTION BUY Cancel MAX_POS *** : ' + res_del_buy["executedQty"])
+                    except:
+                        logger.info('EXCEPTION lors du Cancel MAX_POS BUY_'+str(i))
+                        del orders['BUY_' + str(i)]
 
             # #########################################################################################################
             # #############################################     SELL     ##############################################
@@ -268,7 +288,7 @@ class SpotMM:
                                     #list_sell.append([orders['SELL_' + str(i)]["price"], res_del_sell["executedQty"]])
                                     logger.info('*** EXECUTION SELL Cancel *** : ' + res_del_sell["executedQty"])
                             except:
-                                logger.info('EXCEPTION lors du cancel SELL_'+str(i))
+                                logger.info('EXCEPTION lors du Cancel SELL_'+str(i))
 
                         # Ajout du nouvel ordre
                         res_sell = client.order_limit_sell(
@@ -287,7 +307,27 @@ class SpotMM:
                     if float(res_sell["executedQty"]) != 0:
                         # Filled
                         logger.info('*** EXECUTION SELL Order TAKER *** : ' + str(res_sell["executedQty"]))
+            else:
+                # MIN_POSITION Atteint, on check si on a un ordre en cours, si oui on le supprime
+                if 'SELL_' + str(i) in orders:
+                    try:
+                        res_del_sell = client.cancel_order(
+                            symbol=settings.SYMBOL,
+                            orderId=orders['SELL_' + str(i)]["orderId"])
+                        #logger.debug(res_del_sell)
 
+                        # On récupère le montant éxecuté
+                        # On le fait exclusivement ici afin de ne pas double comptabiliser des partial-filled
+                        if float(res_del_sell["executedQty"]) > 0:
+                            self.current_position -= float(res_del_sell["executedQty"])
+                            self.total_volume += float(res_del_sell["executedQty"])
+                            list_sell_qty.append(float(res_del_sell["executedQty"]))
+                            list_sell_amount.append(float(res_del_sell["executedQty"]) * orders['SELL_' + str(i)]["price"])
+                            #list_sell.append([orders['SELL_' + str(i)]["price"], res_del_sell["executedQty"]])
+                            logger.info('*** EXECUTION SELL Cancel MIN_POS *** : ' + res_del_sell["executedQty"])
+                    except:
+                        logger.info('EXCEPTION lors du Cancel MIN_POS SELL_'+str(i))
+                        del orders['SELL_' + str(i)]
 
         if len(list_buy_qty) > 0:
             logger.info('Avg Buy Price : ' + str(round(sum(list_buy_amount)/sum(list_buy_qty), settings.ROUND_PRECISION)))
