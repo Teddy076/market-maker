@@ -257,44 +257,48 @@ class SpotMM:
                     # On connait le palier, on le check
                     if orders['SELL_' + str(i)]["price"] != sellprice:
                         # Avant de supprimer, on check qu'il est encore en cours
-                        res_del_check = client.get_order(
-                            symbol=settings.SYMBOL,
-                            orderId=orders['SELL_' + str(i)]["orderId"])
-                        #logger.debug(res_del_check)
-                        if res_del_check["status"] in ('FILLED','CANCELED'):
-                            # Ordre filled, on récupère le executedQty
-                            if float(res_del_check["executedQty"]) > 0:
-                                self.current_position -= float(res_del_check["executedQty"])
-                                self.total_volume += float(res_del_check["executedQty"])
-                                list_sell_qty.append(float(res_del_check["executedQty"]))
-                                list_sell_amount.append(float(res_del_check["executedQty"]) * orders['SELL_' + str(i)]["price"])
-                                #list_sell.append([orders['SELL_' + str(i)]["price"], res_del_check["executedQty"]])
-                                logger.info('*** EXECUTION SELL Check *** : ' + res_del_check["executedQty"])
-                        else:
-                            # On supprime l'ordre précedent
-                            try:
-                                res_del_sell = client.cancel_order(
-                                    symbol=settings.SYMBOL,
-                                    orderId=orders['SELL_' + str(i)]["orderId"])
-                                #logger.debug(res_del_sell)
+                        try:
+                            res_del_check = client.get_order(
+                                symbol=settings.SYMBOL,
+                                orderId=orders['SELL_' + str(i)]["orderId"])
+                            #logger.debug(res_del_check)
+                            if res_del_check["status"] in ('FILLED','CANCELED'):
+                                # Ordre filled, on récupère le executedQty
+                                if float(res_del_check["executedQty"]) > 0:
+                                    self.current_position -= float(res_del_check["executedQty"])
+                                    self.total_volume += float(res_del_check["executedQty"])
+                                    list_sell_qty.append(float(res_del_check["executedQty"]))
+                                    list_sell_amount.append(float(res_del_check["executedQty"]) * orders['SELL_' + str(i)]["price"])
+                                    #list_sell.append([orders['SELL_' + str(i)]["price"], res_del_check["executedQty"]])
+                                    logger.info('*** EXECUTION SELL Check *** : ' + res_del_check["executedQty"])
+                            else:
+                                # On supprime l'ordre précedent
+                                try:
+                                    res_del_sell = client.cancel_order(
+                                        symbol=settings.SYMBOL,
+                                        orderId=orders['SELL_' + str(i)]["orderId"])
+                                    #logger.debug(res_del_sell)
 
-                                # On récupère le montant éxecuté
-                                # On le fait exclusivement ici afin de ne pas double comptabiliser des partial-filled
-                                if float(res_del_sell["executedQty"]) > 0:
-                                    self.current_position -= float(res_del_sell["executedQty"])
-                                    self.total_volume += float(res_del_sell["executedQty"])
-                                    list_sell_qty.append(float(res_del_sell["executedQty"]))
-                                    list_sell_amount.append(float(res_del_sell["executedQty"]) * orders['SELL_' + str(i)]["price"])
-                                    #list_sell.append([orders['SELL_' + str(i)]["price"], res_del_sell["executedQty"]])
-                                    logger.info('*** EXECUTION SELL Cancel *** : ' + res_del_sell["executedQty"])
-                            except:
-                                logger.info('EXCEPTION lors du Cancel SELL_'+str(i))
+                                    # On récupère le montant éxecuté
+                                    # On le fait exclusivement ici afin de ne pas double comptabiliser des partial-filled
+                                    if float(res_del_sell["executedQty"]) > 0:
+                                        self.current_position -= float(res_del_sell["executedQty"])
+                                        self.total_volume += float(res_del_sell["executedQty"])
+                                        list_sell_qty.append(float(res_del_sell["executedQty"]))
+                                        list_sell_amount.append(float(res_del_sell["executedQty"]) * orders['SELL_' + str(i)]["price"])
+                                        #list_sell.append([orders['SELL_' + str(i)]["price"], res_del_sell["executedQty"]])
+                                        logger.info('*** EXECUTION SELL Cancel *** : ' + res_del_sell["executedQty"])
+                                except:
+                                    logger.info('EXCEPTION lors du Cancel SELL_'+str(i))
 
-                        # Ajout du nouvel ordre
-                        res_sell = client.order_limit_sell(
-                            symbol=settings.SYMBOL,
-                            quantity=(settings.ORDER_START_SIZE + (settings.ORDER_STEP_SIZE * i)),
-                            price=sellprice)
+                            # Ajout du nouvel ordre
+                            res_sell = client.order_limit_sell(
+                                symbol=settings.SYMBOL,
+                                quantity=(settings.ORDER_START_SIZE + (settings.ORDER_STEP_SIZE * i)),
+                                price=sellprice)
+                        except:
+                            logger.info('EXCEPTION lors du Check SELL_'+str(i))
+                            nochange_sell = 1
                     else:
                         # Pas de changement, on ne touche a rien
                         nochange_sell = 1
