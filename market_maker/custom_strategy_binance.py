@@ -367,20 +367,22 @@ def run() -> None:
         # Delete des orders
         for i in orders:
             # On supprime l'ordre
-            res_del = client.cancel_order(
-                symbol=settings.SYMBOL,
-                orderId=orders[i]["orderId"])
-            logger.debug(res_del)
+            try:
+                res_del = client.cancel_order(
+                    symbol=settings.SYMBOL,
+                    orderId=orders[i]["orderId"])
+                logger.debug(res_del)
 
-            # On récupère le montant éxecuté
-            if float(res_del["executedQty"]) > 0:
-                if res_del["side"] == "BUY":
-                    current_position += float(res_del["executedQty"])
-                    logger.info('EXECUTION BUY : ' + res_del["executedQty"])
-                else:
-                    current_position -= float(res_del["executedQty"])
-                    logger.info('EXECUTION SELL : ' + res_del["executedQty"])
-
+                # On récupère le montant éxecuté
+                if float(res_del["executedQty"]) > 0:
+                    if res_del["side"] == "BUY":
+                        current_position += float(res_del["executedQty"])
+                        logger.info('EXECUTION BUY : ' + res_del["executedQty"])
+                    else:
+                        current_position -= float(res_del["executedQty"])
+                        logger.info('EXECUTION SELL : ' + res_del["executedQty"])
+            except:
+                logger.info('Exception lors du Cancel Exit')
         logger.info('Position finale : ' + str(mm.current_position))
 
         sys.exit()
