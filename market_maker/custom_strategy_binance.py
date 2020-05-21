@@ -38,75 +38,71 @@ class SpotMM:
         offset_cumul = 0
         offset_coef = 0
         predict_delta = 0
-        predict_cumul = 0
+        indexprice_cumul = 0
+        indexprice_amplitude = 0
         predict_last = 0
         tickSize = 0
         openorder = ''
-
-        # IndexPrice
-        indexprice = IndexPrice().LastPrice(settings.SYMBOL)
-
-        # Prediction : Liste des IndexPrice
-        indexprice_list.append(indexprice)
-        if len(indexprice_list) > settings.PREDICT_SIZE:
-            del indexprice_list[0]
 
         # Exchange Data
         ticker = client.get_orderbook_ticker(symbol=settings.SYMBOL)
         ticker_bid = float(ticker["bidPrice"])
         ticker_ask = float(ticker["askPrice"])
         ticker_mid = (ticker_bid + ticker_ask) / 2
-        logger.info('Ticker Mid : ' + str(ticker_mid))
+        logger.debug('Ticker Mid : ' + str(ticker_mid))
         #current_position = self.exchange.get_delta()
 
-        # Offset List
-        offset.append(((ticker_mid - indexprice) / indexprice))
-        if len(offset) > settings.OFFSET_MAX:
-            del offset[0]
+        # IndexPrice selon settings.INDEX_SOURCE
+        if settings.INDEX_SOURCE == 1:
+            # Mode IndexPrice
+            indexprice = IndexPrice().LastPrice(settings.SYMBOL)
+        elif settings.INDEX_SOURCE == 2:
+            # Mode SpotPrice
+            indexprice = ticker_mid
+        else:
+            # Erreur de Settings
+            logger.warning('Please check settings : INDEX_SOURCE is wrong')
+            indexprice = ticker_mid
 
-        # Calcul de l'offset à appliquer
-        # On accorde plus d'importance aux données récentes selon certains settings
-        for i in range(0, len(offset)):
-            offset_cumul += (offset[i] * (i + 1))
-            offset_coef += (i + 1)
+        # Prediction : Liste des IndexPrice
+        indexprice_list.append(indexprice)
+        if len(indexprice_list) > settings.PREDICT_SIZE:
+            del indexprice_list[0]
 
-        # Calcul offset final
-        # On obtient un pourcentage brut à appliquer à notre indexprice
-        offset_calcul = (offset_cumul / offset_coef)
-        indexoffset = indexprice * (1 + offset_calcul)
+        # Calcul d'un IndexPrice
+        for i in range(0, len(indexprice_list)):
+            indexprice_cumul += indexprice_list[i]
 
-        # Prediction
-        if settings.PREDICT_MODE != 0:
-            for i in range(0, len(indexprice_list)):
-                if predict_last > 0:
-                    predict_cumul += (indexprice_list[i] - predict_last)
-                predict_last = indexprice_list[i]
+        #logger.debug('Taille IndexPriceList : ' + str(len(indexprice_list)))
+        #logger.debug(indexprice_list)
 
-            # Prediction Mode
-            if settings.PREDICT_MODE == 1:
-                # Cumul
-                predict_delta = predict_cumul
-            elif settings.PREDICT_MODE == 2:
-                # Moyenne
-                predict_delta = (predict_cumul / settings.PREDICT_SIZE)
-            else:
-                # Inconnu : On utilise le mode par défault et indique un warning
-                logger.warning('Please check settings : PREDICT_MODE is wrong')
-                predict_delta = predict_cumul
+        # Amplitude de notre liste des indexprice (%%)
+        # *********************************************************************************************************************************** A FAIRE
+        indexprice_amplitude = (max(indexprice_list) - min(indexprice_list)) / min(indexprice_list)
+        logger.info('Amplitude Actuelle : ' + str(round(indexprice_amplitude * 100, 4)) + ' %')
+
+        # Prediction Mode
+        #if settings.PREDICT_MODE == 1:
+        if indexprice_amplitude < settings.MIN_SPREAD:
+            # Moyenne
+            indexoffset_buy = (indexprice_cumul / len(indexprice_list))
+            indexoffset_sell = indexoffset_buy
+        #elif settings.PREDICT_MODE == 2:
+        else:
+            # Min/Max
+            indexoffset_buy = min(indexprice_list)
+            indexoffset_sell = max(indexprice_list)
+        '''else:
+            # Inconnu : On utilise le mode par défault et indique un warning
+            logger.warning('Please check settings : PREDICT_MODE is wrong')
+            indexoffset_buy = (indexprice_cumul / len(indexprice_list))
+            indexoffset_sell = indexoffset_buy'''
 
         # Log some data
         #logger.debug('Taille Offset : ' + str(len(offset)))
         #logger.debug(str(offset))
-        logger.info('Offset calculé : ' + str(round(offset_calcul * 100, settings.ROUND_PRECISION)))
-        logger.info('IndexPrice avec offset : ' + str(round(indexoffset, settings.ROUND_PRECISION)))
-
-        if settings.PREDICT_MODE != 0:
-            logger.info('Prediction : ' + str(round(predict_delta, settings.ROUND_PRECISION)))
-
-            # Application de la Prediction à indexoffset
-            indexoffset += predict_delta
-
-            logger.info('IndexPrice avec predict : ' + str(round(indexoffset, settings.ROUND_PRECISION)))
+        logger.debug('IndexPrice BUY : ' + str(round(indexoffset_buy, settings.ROUND_PRECISION)))
+        logger.debug('IndexPrice SELL : ' + str(round(indexoffset_sell, settings.ROUND_PRECISION)))
 
         # Customisation du TickSize
         if settings.TICKSIZE_CUSTOM != 0:
@@ -131,7 +127,7 @@ class SpotMM:
                 # Premier passage, on check le spread et on applique le MIN_SPREAD
                 if i == 0:
                     # Price Calculation
-                    buyprice = math.toNearest(indexoffset * (1 - (settings.MIN_SPREAD / 2)), ticksize)
+                    buyprice = math.toNearest(indexoffset_buy * (1 - (settings.MIN_SPREAD / 2)), ticksize)
 
                     # MAINTAIN_SPREADS
                     if buyprice > ticker_bid and settings.MAINTAIN_SPREADS == True: buyprice = ticker_bid
@@ -164,16 +160,16 @@ class SpotMM:
                                     self.current_position += float(res_del_check["executedQty"])
                                     self.total_volume += float(res_del_check["executedQty"])
                                     list_buy_qty.append(float(res_del_check["executedQty"]))
-                                    list_buy_amount.append(float(res_del_check["executedQty"]) * orders['BUY_' + str(i)]["price"])
+                                    list_buy_amount.append(float(res_del_check["cummulativeQuoteQty"]))
                                     #list_buy.append([orders['BUY_' + str(i)]["price"], res_del_check["executedQty"]])
-                                    logger.info('*** EXECUTION BUY Check *** : ' + res_del_check["executedQty"])
+                                    logger.info('*** EXECUTION BUY Check *** : ' + res_del_check["executedQty"] + ' | ' + res_del_check["cummulativeQuoteQty"])
                             else:
                                 # On supprime l'ordre précedent
                                 try:
                                     res_del_buy = client.cancel_order(
                                         symbol=settings.SYMBOL,
                                         orderId=orders['BUY_' + str(i)]["orderId"])
-                                    #logger.debug(res_del_buy)
+                                    logger.debug(res_del_buy)
 
                                     # On récupère le montant éxecuté
                                     # On le fait exclusivement ici afin de ne pas double comptabiliser des partial-filled
@@ -181,9 +177,9 @@ class SpotMM:
                                         self.current_position += float(res_del_buy["executedQty"])
                                         self.total_volume += float(res_del_buy["executedQty"])
                                         list_buy_qty.append(float(res_del_buy["executedQty"]))
-                                        list_buy_amount.append(float(res_del_buy["executedQty"]) * orders['BUY_' + str(i)]["price"])
+                                        list_buy_amount.append(float(res_del_buy["cummulativeQuoteQty"]))
                                         #list_buy.append([orders['BUY_' + str(i)]["price"], res_del_buy["executedQty"]])
-                                        logger.info('*** EXECUTION BUY Cancel *** : ' + res_del_buy["executedQty"])
+                                        logger.info('*** EXECUTION BUY Cancel *** : ' + res_del_buy["executedQty"] + ' | ' + res_del_buy["cummulativeQuoteQty"])
                                 except:
                                     logger.info('EXCEPTION lors du Cancel BUY_'+str(i))
 
@@ -222,9 +218,9 @@ class SpotMM:
                             self.current_position += float(res_del_buy["executedQty"])
                             self.total_volume += float(res_del_buy["executedQty"])
                             list_buy_qty.append(float(res_del_buy["executedQty"]))
-                            list_buy_amount.append(float(res_del_buy["executedQty"]) * orders['BUY_' + str(i)]["price"])
+                            list_buy_amount.append(float(res_del_buy["cummulativeQuoteQty"]))
                             #list_buy.append([orders['BUY_' + str(i)]["price"], res_del_buy["executedQty"]])
-                            logger.info('*** EXECUTION BUY Cancel MAX_POS *** : ' + res_del_buy["executedQty"])
+                            logger.info('*** EXECUTION BUY Cancel MAX_POS *** : ' + res_del_buy["executedQty"] + ' | ' + res_del_buy["cummulativeQuoteQty"])
                     except:
                         logger.info('EXCEPTION lors du Cancel MAX_POS BUY_'+str(i))
                         del orders['BUY_' + str(i)]
@@ -236,7 +232,7 @@ class SpotMM:
                 # Premier passage, on check le spread et on applique le MIN_SPREAD
                 if i == 0:
                     # Price Calculation
-                    sellprice = math.toNearest(indexoffset * (1 + (settings.MIN_SPREAD / 2)), ticksize)
+                    sellprice = math.toNearest(indexoffset_sell * (1 + (settings.MIN_SPREAD / 2)), ticksize)
 
                     # MAINTAIN_SPREADS
                     if sellprice < ticker_ask and settings.MAINTAIN_SPREADS == True: sellprice = ticker_ask
@@ -268,16 +264,16 @@ class SpotMM:
                                     self.current_position -= float(res_del_check["executedQty"])
                                     self.total_volume += float(res_del_check["executedQty"])
                                     list_sell_qty.append(float(res_del_check["executedQty"]))
-                                    list_sell_amount.append(float(res_del_check["executedQty"]) * orders['SELL_' + str(i)]["price"])
+                                    list_sell_amount.append(float(res_del_check["cummulativeQuoteQty"]))
                                     #list_sell.append([orders['SELL_' + str(i)]["price"], res_del_check["executedQty"]])
-                                    logger.info('*** EXECUTION SELL Check *** : ' + res_del_check["executedQty"])
+                                    logger.info('*** EXECUTION SELL Check *** : ' + res_del_check["executedQty"] + ' | ' + res_del_check["cummulativeQuoteQty"])
                             else:
                                 # On supprime l'ordre précedent
                                 try:
                                     res_del_sell = client.cancel_order(
                                         symbol=settings.SYMBOL,
                                         orderId=orders['SELL_' + str(i)]["orderId"])
-                                    #logger.debug(res_del_sell)
+                                    logger.debug(res_del_sell)
 
                                     # On récupère le montant éxecuté
                                     # On le fait exclusivement ici afin de ne pas double comptabiliser des partial-filled
@@ -285,9 +281,9 @@ class SpotMM:
                                         self.current_position -= float(res_del_sell["executedQty"])
                                         self.total_volume += float(res_del_sell["executedQty"])
                                         list_sell_qty.append(float(res_del_sell["executedQty"]))
-                                        list_sell_amount.append(float(res_del_sell["executedQty"]) * orders['SELL_' + str(i)]["price"])
+                                        list_sell_amount.append(float(res_del_sell["cummulativeQuoteQty"]))
                                         #list_sell.append([orders['SELL_' + str(i)]["price"], res_del_sell["executedQty"]])
-                                        logger.info('*** EXECUTION SELL Cancel *** : ' + res_del_sell["executedQty"])
+                                        logger.info('*** EXECUTION SELL Cancel *** : ' + res_del_sell["executedQty"] + ' | ' + res_del_sell["cummulativeQuoteQty"])
                                 except:
                                     logger.info('EXCEPTION lors du Cancel SELL_'+str(i))
 
@@ -326,9 +322,9 @@ class SpotMM:
                             self.current_position -= float(res_del_sell["executedQty"])
                             self.total_volume += float(res_del_sell["executedQty"])
                             list_sell_qty.append(float(res_del_sell["executedQty"]))
-                            list_sell_amount.append(float(res_del_sell["executedQty"]) * orders['SELL_' + str(i)]["price"])
+                            list_sell_amount.append(float(res_del_sell["cummulativeQuoteQty"]))
                             #list_sell.append([orders['SELL_' + str(i)]["price"], res_del_sell["executedQty"]])
-                            logger.info('*** EXECUTION SELL Cancel MIN_POS *** : ' + res_del_sell["executedQty"])
+                            logger.info('*** EXECUTION SELL Cancel MIN_POS *** : ' + res_del_sell["executedQty"] + ' | ' + res_del_sell["cummulativeQuoteQty"])
                     except:
                         logger.info('EXCEPTION lors du Cancel MIN_POS SELL_'+str(i))
                         del orders['SELL_' + str(i)]
