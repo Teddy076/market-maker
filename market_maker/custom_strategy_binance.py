@@ -331,13 +331,12 @@ class SpotMM:
                         logger.info('EXCEPTION lors du Cancel MIN_POS SELL_'+str(i))
                         del orders['SELL_' + str(i)]
 
-        avg_price_buy = sum(list_buy_amount)/sum(list_buy_qty)
-        avg_price_sell = sum(list_sell_amount)/sum(list_sell_qty)
-
         if len(list_buy_qty) > 0:
+            avg_price_buy = sum(list_buy_amount)/sum(list_buy_qty)
             logger.info('Avg Buy Price : ' + str(round(avg_price_buy, settings.ROUND_PRECISION)))
             logger.info('Volume Buy : ' + str(sum(list_buy_qty)))
         if len(list_sell_qty) > 0:
+            avg_price_sell = sum(list_sell_amount)/sum(list_sell_qty)
             logger.info('Avg Sell Price : ' + str(round(avg_price_sell, settings.ROUND_PRECISION)))
             logger.info('Volume Sell : ' + str(sum(list_sell_qty)))
         if len(list_buy_qty) > 0 and len(list_sell_qty) > 0:
