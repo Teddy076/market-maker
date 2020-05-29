@@ -43,6 +43,8 @@ class SpotMM:
         predict_last = 0
         tickSize = 0
         openorder = ''
+        avg_price_buy = 0
+        avg_price_sell = 0
 
         # Exchange Data
         ticker = client.get_orderbook_ticker(symbol=settings.SYMBOL)
@@ -329,17 +331,21 @@ class SpotMM:
                         logger.info('EXCEPTION lors du Cancel MIN_POS SELL_'+str(i))
                         del orders['SELL_' + str(i)]
 
+        avg_price_buy = sum(list_buy_amount)/sum(list_buy_qty)
+        avg_price_sell = sum(list_sell_amount)/sum(list_sell_qty)
+
         if len(list_buy_qty) > 0:
-            logger.info('Avg Buy Price : ' + str(round(sum(list_buy_amount)/sum(list_buy_qty), settings.ROUND_PRECISION)))
+            logger.info('Avg Buy Price : ' + str(round(avg_price_buy, settings.ROUND_PRECISION)))
             logger.info('Volume Buy : ' + str(sum(list_buy_qty)))
         if len(list_sell_qty) > 0:
-            logger.info('Avg Sell Price : ' + str(round(sum(list_sell_amount)/sum(list_sell_qty), settings.ROUND_PRECISION)))
+            logger.info('Avg Sell Price : ' + str(round(avg_price_sell, settings.ROUND_PRECISION)))
             logger.info('Volume Sell : ' + str(sum(list_sell_qty)))
         if len(list_buy_qty) > 0 and len(list_sell_qty) > 0:
             if sum(list_buy_qty) < sum(list_sell_qty):
                 logger.info('Benefice : ' + str(round(((sum(list_sell_amount)/sum(list_sell_qty)) * sum(list_buy_qty)) - ((sum(list_buy_amount)/sum(list_buy_qty)) * sum(list_buy_qty)), settings.ROUND_PRECISION)))
             else:
                 logger.info('Benefice : ' + str(round(((sum(list_sell_amount)/sum(list_sell_qty)) * sum(list_sell_qty)) - ((sum(list_buy_amount)/sum(list_buy_qty)) * sum(list_sell_qty)), settings.ROUND_PRECISION)))
+            logger.info('Rendement : ' + str(round((avg_price_sell - avg_price_buy) / avg_price_buy * 100,4)) + ' %')
         logger.info('Position en cours : ' + str(round(self.current_position, settings.ROUND_PRECISION)))
         logger.info('Volume Total : ' + str(round(self.total_volume, settings.ROUND_PRECISION)))
 
