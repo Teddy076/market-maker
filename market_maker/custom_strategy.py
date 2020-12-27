@@ -34,7 +34,11 @@ class CustomOrderManager(OrderManager):
         tickSize = 0
 
         # IndexPrice
-        indexprice = IndexPrice().LastPrice(settings.SYMBOL)
+        if settings.SYMBOL2 != "":
+            # Mode Double SYMBOL
+            indexprice = IndexPrice().LastPrice(settings.SYMBOL1) / IndexPrice().LastPrice(settings.SYMBOL2)
+        else:
+            indexprice = IndexPrice().LastPrice(settings.SYMBOL)
 
         # Prediction : Liste des IndexPrice
         indexprice_list.append(indexprice)
